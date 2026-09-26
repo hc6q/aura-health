@@ -142,6 +142,33 @@ final class AITransportTests: XCTestCase {
         XCTAssertEqual(endpoint.host, "api.cloudflare.com")
     }
 
+    func testImageAndScannedPDFUseLocalOCR() async throws {
+        let image = NSImage(size: NSSize(width: 1200, height: 240))
+        image.lockFocus()
+        NSColor.white.setFill()
+        NSRect(x: 0, y: 0, width: 1200, height: 240).fill()
+        ("Glucose 95 mg/dL" as NSString).draw(at: NSPoint(x: 50, y: 100), withAttributes: [
+            .font: NSFont.systemFont(ofSize: 48), .foregroundColor: NSColor.black
+        ])
+        image.unlockFocus()
+        let bitmap = NSBitmapImageRep(data: try XCTUnwrap(image.tiffRepresentation))!
+        let png = try XCTUnwrap(bitmap.representation(using: .png, properties: [:]))
+        let imageURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".png")
+        let pdfURL = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
+        defer {
+            try? FileManager.default.removeItem(at: imageURL)
+            try? FileManager.default.removeItem(at: pdfURL)
+        }
+        try png.write(to: imageURL)
+        let imageMarkers = try await LocalLabParser.parse(fileURL: imageURL)
+        XCTAssertEqual(imageMarkers.first?.value, 95)
+        let document = PDFDocument()
+        document.insert(try XCTUnwrap(PDFPage(image: image)), at: 0)
+        XCTAssertTrue(document.write(to: pdfURL))
+        let scannedMarkers = try await LocalLabParser.parse(fileURL: pdfURL)
+        XCTAssertEqual(scannedMarkers.first?.value, 95)
+    }
+
     func testLocalTextAndPDFWithoutCredentials() async throws {
         let text = "Quest Diagnostics\nCollected Date: 09/01/2026\nGlucose 95 mg/dL\n"
         let markers = LocalLabParser.parse(text: text, fileName: "test.txt")

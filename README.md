@@ -117,8 +117,8 @@ PDFKit extracts text on iOS and macOS. Vision OCR handles photos and scanned PDF
 Provider documentation checked for the model catalog:
 - [Groq models and tool support](https://console.groq.com/docs/tool-use/overview)
 - [Cloudflare OpenAI compatibility](https://developers.cloudflare.com/workers-ai/configuration/open-ai-compatibility/) and [GPT OSS 120B](https://developers.cloudflare.com/workers-ai/models/gpt-oss-120b/)
-- [Mistral Small](https://docs.mistral.ai/models/mistral-small-4-0-26-03) and [function calling](https://docs.mistral.ai/capabilities/function_calling/)
+- [Mistral Small](https://docs.mistral.ai/models/mistral-small-4-0-26-03) and [free-mode setup and stable model alias](https://docs.mistral.ai/getting-started/quickstarts/studio/activate-and-generate-api-key)
 
 ### Validation
 
-`swift test` on macOS 14+ exercises production Codable types, all tool schemas, multi-tool round trips, invalid arguments, round limits, status/timeout errors and local text/PDF import using synthetic fixtures and a mocked URLSession. No real API keys or health records are required. The AI validation workflow also builds the app for iOS Simulator and macOS without code signing. Live provider requests and device UI/OCR quality still require manual testing with your own account.
+`swift test` on macOS 14+ exercises production Codable types, all tool schemas, multi-tool round trips, invalid arguments, round limits, status/timeout errors and local text/PDF/image/scanned-PDF import using synthetic fixtures and a mocked URLSession. No real API keys or health records are required. The AI validation workflow also builds the app for iOS Simulator and macOS without code signing. Live provider requests and device UI/OCR quality still require manual testing with your own account.
