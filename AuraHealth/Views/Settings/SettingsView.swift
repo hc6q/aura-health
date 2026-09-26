@@ -11,7 +11,6 @@ struct SettingsView: View {
     #endif
     @AppStorage("weightUnit") private var weightUnit: WeightUnit = .kg
     @AppStorage("temperatureUnit") private var temperatureUnit: TemperatureUnit = .celsius
-    @AppStorage("claudeModel") private var claudeModel: ClaudeModel = .sonnet
 
     @State private var showingClearConfirmation = false
     @State private var sampleDataLoaded = false
@@ -22,8 +21,6 @@ struct SettingsView: View {
     @State private var showingImportResult = false
 
     // API Key
-    @State private var claudeAPIKey = ""
-    @State private var showingAPIKeyField = false
 
     var body: some View {
         Form {
@@ -61,8 +58,7 @@ struct SettingsView: View {
             }
 
             Section("AI") {
-                claudeAPISection
-                modelPickerSection
+                AIProviderSettings()
             }
 
             Section("Data") {
@@ -291,78 +287,6 @@ struct SettingsView: View {
         }
     }
     #endif
-
-    // MARK: - Claude API Section
-
-    private var claudeAPISection: some View {
-        Group {
-            HStack {
-                Label {
-                    Text("Claude API")
-                        .font(.body)
-                } icon: {
-                    Image(systemName: "sparkles")
-                        .foregroundStyle(.blue)
-                }
-
-                Spacer()
-
-                if KeychainService.getValue(for: "claude-api-key") != nil {
-                    StatusBadge(label: "Configured", color: .green)
-                    Button("Remove") {
-                        KeychainService.deleteValue(for: "claude-api-key")
-                    }
-                    .foregroundStyle(.red)
-                    .font(.caption)
-                } else {
-                    Button("Add Key") { showingAPIKeyField.toggle() }
-                }
-            }
-            if showingAPIKeyField {
-                HStack {
-                    SecureField("sk-ant-...", text: $claudeAPIKey)
-                        #if os(macOS)
-                        .textFieldStyle(.roundedBorder)
-                        #endif
-                    Button("Save") {
-                        if !claudeAPIKey.isEmpty {
-                            KeychainService.setValue(claudeAPIKey, for: "claude-api-key")
-                            claudeAPIKey = ""
-                            showingAPIKeyField = false
-                        }
-                    }
-                    .disabled(claudeAPIKey.isEmpty)
-                }
-            }
-        }
-    }
-
-    // MARK: - Model Picker
-
-    private var modelPickerSection: some View {
-        HStack {
-            Label {
-                Text("Model")
-                    .font(.body)
-            } icon: {
-                Image(systemName: "cpu")
-                    .foregroundStyle(.blue)
-            }
-
-            Spacer()
-
-            Picker("", selection: $claudeModel) {
-                ForEach(ClaudeModel.allCases, id: \.self) { model in
-                    VStack(alignment: .leading) {
-                        Text(model.displayName)
-                    }
-                    .tag(model)
-                }
-            }
-            .labelsHidden()
-            .fixedSize()
-        }
-    }
 
     // MARK: - Export
 

@@ -113,7 +113,7 @@ struct OnboardingView: View {
             "bubble.left.and.bubble.right.fill",
             .cyan,
             "AI Health Chat",
-            "Ask questions about your health data. Get personalized insights powered by Claude."
+            "Ask questions about your health data. Get personalized insights powered by your selected AI provider."
         ),
     ]
 
@@ -421,11 +421,11 @@ struct OnboardingView: View {
 
     // MARK: - Chat Setup (API Key)
 
-    @State private var apiKeyInput = ""
+    @State private var showingAISettings = false
     @State private var apiKeySaved = false
 
     private var hasExistingKey: Bool {
-        KeychainService.getValue(for: "claude-api-key") != nil
+        AIConfiguration.isConfigured
     }
 
     private var chatSetupView: some View {
@@ -440,7 +440,7 @@ struct OnboardingView: View {
                 Text("AI Health Chat")
                     .font(.title.bold())
 
-                Text("Chat can answer questions about your vitals, interpret lab reports, log measurements, and spot trends — all powered by Claude.")
+                Text("Chat can answer questions about your vitals, interpret lab reports, log measurements, and spot trends — all powered by your selected AI provider.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -457,38 +457,16 @@ struct OnboardingView: View {
 
             Spacer()
 
-            // API Key input
-            if apiKeySaved || hasExistingKey {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Text("API key configured")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-            } else {
-                VStack(spacing: 10) {
-                    Text("Enter your Claude API key to enable chat")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-
-                    HStack(spacing: 10) {
-                        SecureField("sk-ant-...", text: $apiKeyInput)
-                            .textFieldStyle(.roundedBorder)
-
-                        Button("Save") {
-                            if !apiKeyInput.isEmpty {
-                                KeychainService.setValue(apiKeyInput, for: "claude-api-key")
-                                apiKeyInput = ""
-                                apiKeySaved = true
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(apiKeyInput.isEmpty)
+            Button("Configure AI Provider") { showingAISettings = true }
+                .buttonStyle(.bordered)
+                .sheet(isPresented: $showingAISettings, onDismiss: { apiKeySaved = AIConfiguration.isConfigured }) {
+                    NavigationStack {
+                        Form { Section("AI") { AIProviderSettings() } }
+                            .navigationTitle("AI Provider")
+                            .toolbar { Button("Done") { showingAISettings = false } }
                     }
+                    .frame(minWidth: 320, minHeight: 420)
                 }
-                .padding(.horizontal, 40)
-            }
 
             VStack(spacing: 12) {
                 Button {

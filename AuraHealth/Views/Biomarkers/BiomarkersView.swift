@@ -19,7 +19,7 @@ struct BiomarkersView: View {
     @State private var showOlderMarkers = false
     @State private var showingLabNotes = false
 
-    @State private var claudeService = ClaudeService()
+    @State private var aiService = AIService()
 
     // MARK: - Snapshot Data
 
@@ -276,7 +276,7 @@ struct BiomarkersView: View {
             AddBiomarkerSheet()
         }
         .sheet(isPresented: $showingLabImport) {
-            LabImportSheet(claudeService: claudeService)
+            LabImportSheet(aiService: aiService)
         }
         .sheet(item: $selectedBiomarker) { biomarker in
             BiomarkerDetailSheet(marker: biomarker.marker, biomarkers: biomarkers)

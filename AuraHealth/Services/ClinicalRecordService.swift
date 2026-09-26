@@ -66,7 +66,7 @@ final class ClinicalRecordService {
             logger.notice("[ClinicalRecords] Authorization granted")
         } catch {
             self.error = "Authorization failed: \(error.localizedDescription)"
-            logger.error("[ClinicalRecords] Authorization failed: \(error.localizedDescription)")
+            logger.error("Operation failed")
         }
     }
 
@@ -138,11 +138,10 @@ final class ClinicalRecordService {
             UserDefaults.standard.set(lastSyncDate, forKey: "clinical-records-last-sync")
 
             if let summary = syncSummary {
-                logger.notice("[ClinicalRecords] Sync complete: \(summary.labResults) labs, \(summary.medications) meds, \(summary.conditions) conditions, \(summary.vitals) vitals")
             }
         } catch {
             self.error = "Sync failed: \(error.localizedDescription)"
-            logger.error("[ClinicalRecords] Sync failed: \(error.localizedDescription)")
+            logger.error("Operation failed")
         }
 
         existingBiomarkerKeys.removeAll()
@@ -158,7 +157,6 @@ final class ClinicalRecordService {
         guard let type = HKClinicalType.clinicalType(forIdentifier: .labResultRecord) else { return }
 
         let records = try await fetchClinicalRecords(type: type)
-        logger.notice("[ClinicalRecords] Found \(records.count) lab result records")
 
         for record in records {
             guard let fhir = record.fhirResource,
@@ -226,7 +224,6 @@ final class ClinicalRecordService {
         guard let type = HKClinicalType.clinicalType(forIdentifier: .medicationRecord) else { return }
 
         let records = try await fetchClinicalRecords(type: type)
-        logger.notice("[ClinicalRecords] Found \(records.count) medication records")
 
         for record in records {
             guard let fhir = record.fhirResource,
@@ -289,7 +286,6 @@ final class ClinicalRecordService {
         guard let type = HKClinicalType.clinicalType(forIdentifier: .conditionRecord) else { return }
 
         let records = try await fetchClinicalRecords(type: type)
-        logger.notice("[ClinicalRecords] Found \(records.count) condition records")
 
         for record in records {
             guard let fhir = record.fhirResource,
@@ -337,7 +333,6 @@ final class ClinicalRecordService {
         guard let type = HKClinicalType.clinicalType(forIdentifier: .vitalSignRecord) else { return }
 
         let records = try await fetchClinicalRecords(type: type)
-        logger.notice("[ClinicalRecords] Found \(records.count) vital sign records")
 
         for record in records {
             guard let fhir = record.fhirResource,

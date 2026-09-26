@@ -47,13 +47,19 @@
 		AD5FEC8A0D704D4146E21421 /* SampleDataService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54FB68BE6677762490EB286C /* SampleDataService.swift */; };
 		BDA51E8296D8958B223C0920 /* HealthAutoExportService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2106B9B11C4835D357327B7A /* HealthAutoExportService.swift */; };
 		CBD29191577CFEA0837555AF /* Medication.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3B5467EA103565E15660890 /* Medication.swift */; };
-		CD6A178AD61659B1D557465E /* ClaudeService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EDEC4896BAC6346CE028705 /* ClaudeService.swift */; };
+		CD6A178AD61659B1D557465E /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EDEC4896BAC6346CE028705 /* AIService.swift */; };
 		D1701CD949F9DE91E3016924 /* FHIRProviderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A5F734127A5F000BC25941E /* FHIRProviderService.swift */; };
 		E6BA799428D23DF3709F9227 /* AuraHealthApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16902DEC0AA83D3D751327D /* AuraHealthApp.swift */; };
 		F340F6D32D8AE036097FB452 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18D375715646717260546E4 /* KeychainService.swift */; };
 		F52641EF29B57ADF01C77C32 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD2C6EC7A7A998A67502676 /* SettingsView.swift */; };
 		F889EF6B2035A669F3B3BD12 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FF67B195E125AA4E666D075 /* OnboardingView.swift */; };
 		F9C5D34776981146FCBD537F /* HealthScoreRingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61BCBED3749F32B2C38D1A79 /* HealthScoreRingView.swift */; };
+		93DEE5892F344E3B8A1A016D /* AIConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E6B6C735B1644F7AB380177 /* AIConfiguration.swift */; };
+		043B18EA6CB54571B18D68DF /* AITools.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD8F2C0B154D4DEDA9F79AD1 /* AITools.swift */; };
+		35BA0C7F11114BDDA62556DB /* ChatCompletions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B661B1B94A8B4927BD99C076 /* ChatCompletions.swift */; };
+		B757FC29EEF346C2A113AFEA /* ExtractedBiomarker.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF72BFF9537F43A7A16601F0 /* ExtractedBiomarker.swift */; };
+		FF8499B18CE84EF38B87E137 /* JSONValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67B700A2A5AF4E4496EE7689 /* JSONValue.swift */; };
+		3732DBA3C4A04702A574BE61 /* AIProviderSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D8C686E36743DD92F66CF3 /* AIProviderSettings.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -87,7 +93,7 @@
 		818DBF61332470CCB45AE0A0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		848BD405496CA2D2A4F7E7B3 /* DailyProtocolService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyProtocolService.swift; sourceTree = "<group>"; };
 		84FE7C8A85A79F53946B47B6 /* LabSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabSession.swift; sourceTree = "<group>"; };
-		8EDEC4896BAC6346CE028705 /* ClaudeService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeService.swift; sourceTree = "<group>"; };
+		8EDEC4896BAC6346CE028705 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
 		8F907AAF541954077D6AA91F /* MetricCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetricCardView.swift; sourceTree = "<group>"; };
 		9FF67B195E125AA4E666D075 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		BA3D3C759241F2C803B52BEB /* LabImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabImportSheet.swift; sourceTree = "<group>"; };
@@ -108,12 +114,24 @@
 		F43818B6C38C5986D44EB4F7 /* TodayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayView.swift; sourceTree = "<group>"; };
 		F8E606A4E88686708D75414E /* HabitsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HabitsView.swift; sourceTree = "<group>"; };
 		FE556957C3B043CE1576B1B3 /* DailyProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyProtocol.swift; sourceTree = "<group>"; };
+		3E6B6C735B1644F7AB380177 /* AIConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraHealth/Services/AI/AIConfiguration.swift; sourceTree = SOURCE_ROOT; };
+		FD8F2C0B154D4DEDA9F79AD1 /* AITools.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraHealth/Services/AI/AITools.swift; sourceTree = SOURCE_ROOT; };
+		B661B1B94A8B4927BD99C076 /* ChatCompletions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraHealth/Services/AI/ChatCompletions.swift; sourceTree = SOURCE_ROOT; };
+		BF72BFF9537F43A7A16601F0 /* ExtractedBiomarker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraHealth/Services/AI/ExtractedBiomarker.swift; sourceTree = SOURCE_ROOT; };
+		67B700A2A5AF4E4496EE7689 /* JSONValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraHealth/Services/AI/JSONValue.swift; sourceTree = SOURCE_ROOT; };
+		04D8C686E36743DD92F66CF3 /* AIProviderSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuraHealth/Views/Settings/AIProviderSettings.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		17F97E341B3DDA9AEF6A4B68 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				04D8C686E36743DD92F66CF3 /* AIProviderSettings.swift */,
+				67B700A2A5AF4E4496EE7689 /* JSONValue.swift */,
+				BF72BFF9537F43A7A16601F0 /* ExtractedBiomarker.swift */,
+				B661B1B94A8B4927BD99C076 /* ChatCompletions.swift */,
+				FD8F2C0B154D4DEDA9F79AD1 /* AITools.swift */,
+				3E6B6C735B1644F7AB380177 /* AIConfiguration.swift */,
 				722618D2285FDE5C68020E19 /* Assets.xcassets */,
 			);
 			path = Resources;
@@ -187,7 +205,7 @@
 		7E8AFC00538ACDC4AEF5A842 /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				8EDEC4896BAC6346CE028705 /* ClaudeService.swift */,
+				8EDEC4896BAC6346CE028705 /* AIService.swift */,
 				D903CFC0AADD0338FD2083A0 /* ClinicalRecordService.swift */,
 				848BD405496CA2D2A4F7E7B3 /* DailyProtocolService.swift */,
 				1A5F734127A5F000BC25941E /* FHIRProviderService.swift */,
@@ -412,13 +430,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3732DBA3C4A04702A574BE61 /* AIProviderSettings.swift in Sources */,
+				FF8499B18CE84EF38B87E137 /* JSONValue.swift in Sources */,
+				B757FC29EEF346C2A113AFEA /* ExtractedBiomarker.swift in Sources */,
+				35BA0C7F11114BDDA62556DB /* ChatCompletions.swift in Sources */,
+				043B18EA6CB54571B18D68DF /* AITools.swift in Sources */,
+				93DEE5892F344E3B8A1A016D /* AIConfiguration.swift in Sources */,
 				2C35B3D325680C42F79C3E28 /* AdherenceView.swift in Sources */,
 				E6BA799428D23DF3709F9227 /* AuraHealthApp.swift in Sources */,
 				2F68990EC1600875D09E7E43 /* Biomarker.swift in Sources */,
 				464E57AE0268E94DEB26A80C /* BiomarkerReference.swift in Sources */,
 				88FFEBD62150E819517DB807 /* BiomarkersView.swift in Sources */,
 				9CAEEF42DC6A07AB244E181E /* ChatView.swift in Sources */,
-				CD6A178AD61659B1D557465E /* ClaudeService.swift in Sources */,
+				CD6A178AD61659B1D557465E /* AIService.swift in Sources */,
 				0CF4EE7BDA87282833A853D9 /* ClinicalRecordService.swift in Sources */,
 				277577D408A725405A29FE09 /* Condition.swift in Sources */,
 				A951074E869C673FCE1E47B6 /* ConditionsView.swift in Sources */,

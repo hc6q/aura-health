@@ -69,7 +69,7 @@ struct FloatingChatPanel: View {
 
     @State private var currentConversation: Conversation?
     @State private var inputText = ""
-    @State private var claudeService = ClaudeService()
+    @State private var aiService = AIService()
     @State private var errorMessage: String?
     @State private var showingHistory = false
     @State private var showingFilePicker = false
@@ -90,7 +90,7 @@ struct FloatingChatPanel: View {
     }
 
     private var canSend: Bool {
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !claudeService.isResponding
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !aiService.isResponding
     }
 
     var body: some View {
@@ -154,16 +154,16 @@ struct FloatingChatPanel: View {
                             ChatBubble(message: message)
                                 .id(message.id)
                         }
-                        if claudeService.isResponding {
+                        if aiService.isResponding {
                             HStack(spacing: 4) {
                                 ForEach(0..<3, id: \.self) { i in
                                     Circle()
                                         .fill(Color.secondary.opacity(0.4))
                                         .frame(width: 5, height: 5)
-                                        .offset(y: claudeService.isResponding ? -2 : 0)
+                                        .offset(y: aiService.isResponding ? -2 : 0)
                                         .animation(
                                             .easeInOut(duration: 0.4).repeatForever(autoreverses: true).delay(Double(i) * 0.15),
-                                            value: claudeService.isResponding
+                                            value: aiService.isResponding
                                         )
                                 }
                                 Spacer()
@@ -335,7 +335,7 @@ struct FloatingChatPanel: View {
 
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !claudeService.isResponding else { return }
+        guard !text.isEmpty, !aiService.isResponding else { return }
 
         let conversation = ensureConversation()
         let displayText = attachedFileURL != nil
@@ -347,21 +347,21 @@ struct FloatingChatPanel: View {
             conversation.title = String(text.prefix(50))
         }
 
-        claudeService.pendingFileURL = attachedFileURL
+        aiService.pendingFileURL = attachedFileURL
 
         inputText = ""
         attachedFileURL = nil
         errorMessage = nil
 
-        claudeService.isResponding = true
+        aiService.isResponding = true
         Task {
-            defer { claudeService.isResponding = false }
-            guard claudeService.hasAPIKey else {
-                errorMessage = "Add your Claude API key in Settings to enable AI chat."
+            defer { aiService.isResponding = false }
+            guard aiService.hasAPIKey else {
+                errorMessage = "Add your AI provider credential in Settings to enable AI chat."
                 return
             }
             do {
-                let response = try await claudeService.sendMessage(
+                let response = try await aiService.sendMessage(
                     conversationHistory: conversation.messages,
                     context: modelContext
                 )

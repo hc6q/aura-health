@@ -74,15 +74,17 @@ struct HabitsView: View {
                     adherenceTab
                 }
             }
-            #if os(iOS)
-            // Pull-to-refresh: re-queries SwiftData automatically on next runloop tick.
-            .refreshable {
-                await dailyProtocolService.regenerate(context: modelContext)
-            }
-            #endif
         }
         .navigationTitle("Habits")
         .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Generate AI habits", systemImage: "sparkles") {
+                    Task { await dailyProtocolService.regenerate(context: modelContext) }
+                }
+                .disabled(dailyProtocolService.isGenerating)
+                .help("Send relevant health context to the AI provider selected in Settings")
+            }
+
             ToolbarItem(placement: .primaryAction) {
                 Button { showingAddSheet = true } label: {
                     Image(systemName: "plus")
@@ -90,7 +92,6 @@ struct HabitsView: View {
             }
         }
         .task {
-            await dailyProtocolService.generateIfNeeded(context: modelContext)
             dailyProtocolService.cleanupOldProtocols(context: modelContext)
         }
         #if os(iOS)

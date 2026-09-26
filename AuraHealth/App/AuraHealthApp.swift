@@ -102,7 +102,7 @@ private let auraContainer: ModelContainer = {
         // Existing local store is incompatible with CloudKit — delete it and create fresh
         // This happens once when migrating from local-only to CloudKit sync
         let logger = os.Logger(subsystem: "com.santiagoalonso.aurahealth", category: "Migration")
-        logger.warning("CloudKit container failed, migrating: \(error.localizedDescription)")
+        logger.warning("CloudKit container failed, attempting local migration")
 
         let fileManager = FileManager.default
         let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

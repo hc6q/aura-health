@@ -1,0 +1,47 @@
+name: iPhone IPA
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/multi-provider-ai, main]
+    paths:
+      - 'AuraHealth/**'
+      - 'AuraHealth.xcodeproj/**'
+      - '.github/workflows/iphone-ipa.yml'
+      - 'Secrets.xcconfig'
+permissions:
+  contents: read
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Release for physical iPhone
+        run: |
+          xcodebuild -project AuraHealth.xcodeproj -scheme AuraHealth \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: Package unsigned IPA
+        run: |
+          set -euo pipefail
+          app="build/ios/Build/Products/Release-iphoneos/AuraHealth.app"
+          test -d "$app"
+          xcrun lipo "$app/AuraHealth" -verify_arch arm64
+          platform=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleSupportedPlatforms:0' "$app/Info.plist")
+          test "$platform" = "iPhoneOS"
+          mkdir -p build/package/Payload
+          ditto "$app" build/package/Payload/AuraHealth.app
+          cd build/package
+          /usr/bin/zip -q -r -y AuraHealth-unsigned.ipa Payload
+          shasum -a 256 AuraHealth-unsigned.ipa > SHA256SUMS.txt
+          printf '%s\n' 'Unsigned iPhone Release build. Sign with your own Apple certificate and provisioning profile before installation. HealthKit/CloudKit availability depends on the entitlements supported by that profile.' > INSTALL.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AuraHealth-unsigned-ipa
+          path: |
+            build/package/AuraHealth-unsigned.ipa
+            build/package/SHA256SUMS.txt
+            build/package/INSTALL.txt
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 30

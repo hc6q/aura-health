@@ -40,3 +40,7 @@ CHAT_TEST_PLAN.md
 
 # Landing page (separate project)
 landing/
+
+# Swift package validation
+.build/
+.swiftpm/

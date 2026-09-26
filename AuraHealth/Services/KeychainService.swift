@@ -65,18 +65,21 @@ struct KeychainService {
 
     // MARK: - Generic Key-Value (for tokens, API keys)
 
-    static func setValue(_ value: String, for key: String) {
-        guard let data = value.data(using: .utf8) else { return }
-        deleteValue(for: key)
-
+    @discardableResult
+    static func setValue(_ value: String, for key: String) -> Bool {
+        guard let data = value.data(using: .utf8) else { return false }
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key,
-            kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+            kSecAttrAccount as String: key
         ]
-        SecItemAdd(query as CFDictionary, nil)
+        let update = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if update == errSecSuccess { return true }
+        guard update == errSecItemNotFound else { return false }
+        var item = query
+        item[kSecValueData as String] = data
+        item[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlocked
+        return SecItemAdd(item as CFDictionary, nil) == errSecSuccess
     }
 
     static func getValue(for key: String) -> String? {

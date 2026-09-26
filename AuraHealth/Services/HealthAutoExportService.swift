@@ -42,7 +42,6 @@ final class HealthAutoExportService {
         }
         // Check if we have a saved folder bookmark
         isEnabled = resolveBookmark() != nil
-        logger.notice("[HAE] Init: enabled=\(self.isEnabled)")
     }
 
     // MARK: - Folder Access
@@ -73,7 +72,6 @@ final class HealthAutoExportService {
             UserDefaults.standard.set(bookmark, forKey: Self.bookmarkKey)
             isEnabled = true
             error = nil
-            logger.notice("[HAE] Folder saved: \(url.path)")
         } catch {
             self.error = "Failed to save folder access: \(error.localizedDescription)"
         }
@@ -154,7 +152,6 @@ final class HealthAutoExportService {
 
         do {
             let files = try findExportFiles(in: folderURL, days: days)
-            logger.notice("[HAE] Found \(files.count) export files")
 
             for file in files {
                 syncProgress?.phase = file.lastPathComponent
@@ -164,7 +161,6 @@ final class HealthAutoExportService {
             lastSyncDate = Date()
             UserDefaults.standard.set(lastSyncDate, forKey: "hae-last-sync")
         } catch {
-            logger.notice("[HAE] Sync error: \(error)")
             self.error = "Sync failed: \(error.localizedDescription)"
         }
 
@@ -172,7 +168,6 @@ final class HealthAutoExportService {
         existingMeasurements.removeAll()
         syncProgress = nil
         isSyncing = false
-        logger.notice("[HAE] Sync complete. Total imported: \(imported)")
     }
 
     func disconnect() {

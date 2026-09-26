@@ -24,7 +24,7 @@ struct ChatView: View {
 
     @State private var currentConversation: Conversation?
     @State private var inputText = ""
-    @State private var claudeService = ClaudeService()
+    @State private var aiService = AIService()
     @State private var errorMessage: String?
     @State private var showingHistory = false
     @State private var showingFilePicker = false
@@ -36,7 +36,6 @@ struct ChatView: View {
     @State private var showingVaultPrompt = false
     @FocusState private var isInputFocused: Bool
     @State private var showingAPIKeyPrompt = false
-    @State private var apiKeyInput = ""
 
     /// Returns existing conversation or creates one on demand (only called when sending)
     private func ensureConversation() -> Conversation {
@@ -58,7 +57,7 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: 16) {
-                    if !claudeService.hasAPIKey {
+                    if !aiService.hasAPIKey {
                         apiKeyBanner
                             .padding(.horizontal)
                     }
@@ -70,7 +69,7 @@ struct ChatView: View {
                             .id(message.id)
                             .staggeredAppearance(index: index)
                     }
-                    if claudeService.isResponding {
+                    if aiService.isResponding {
                         typingIndicator
                     }
                     if let errorMessage {
@@ -164,19 +163,13 @@ struct ChatView: View {
                 }
             )
         }
-        .alert("Claude API Key", isPresented: $showingAPIKeyPrompt) {
-            SecureField("sk-ant-...", text: $apiKeyInput)
-            Button("Save") {
-                if !apiKeyInput.isEmpty {
-                    KeychainService.setValue(apiKeyInput, for: "claude-api-key")
-                    apiKeyInput = ""
-                }
+        .sheet(isPresented: $showingAPIKeyPrompt) {
+            NavigationStack {
+                Form { Section("AI") { AIProviderSettings() } }
+                    .navigationTitle("AI Provider")
+                    .toolbar { Button("Done") { showingAPIKeyPrompt = false } }
             }
-            Button("Cancel", role: .cancel) {
-                apiKeyInput = ""
-            }
-        } message: {
-            Text("Enter your Claude API key to enable AI health chat.")
+            .frame(minWidth: 320, minHeight: 420)
         }
         .fileImporter(
             isPresented: $showingFilePicker,
@@ -260,7 +253,7 @@ struct ChatView: View {
     }
 
     private var canSend: Bool {
-        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !claudeService.isResponding
+        !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !aiService.isResponding
     }
 
     private func errorBanner(_ message: String) -> some View {
@@ -294,7 +287,7 @@ struct ChatView: View {
         HStack(spacing: 8) {
             Image(systemName: "key.fill")
                 .foregroundStyle(.secondary)
-            Text("Add your Claude API key in Settings to enable AI chat")
+            Text("Add your AI provider credential in Settings to enable AI chat")
                 .font(.caption)
                 .foregroundStyle(.secondary)
             Spacer()
@@ -399,9 +392,9 @@ struct ChatView: View {
                         .font(.system(size: 16, weight: .medium))
                         .foregroundStyle(.secondary)
                 }
-                .disabled(!claudeService.hasAPIKey)
+                .disabled(!aiService.hasAPIKey)
 
-                if claudeService.hasAPIKey {
+                if aiService.hasAPIKey {
                     TextField("Ask about your health data...", text: $inputText, axis: .vertical)
                         .focused($isInputFocused)
                         .textFieldStyle(.plain)
@@ -449,10 +442,10 @@ struct ChatView: View {
                 Circle()
                     .fill(Color.secondary.opacity(0.4))
                     .frame(width: 6, height: 6)
-                    .offset(y: claudeService.isResponding ? -3 : 0)
+                    .offset(y: aiService.isResponding ? -3 : 0)
                     .animation(
                         .easeInOut(duration: 0.4).repeatForever(autoreverses: true).delay(Double(i) * 0.15),
-                        value: claudeService.isResponding
+                        value: aiService.isResponding
                     )
             }
             Spacer()
@@ -464,7 +457,7 @@ struct ChatView: View {
 
     private func sendMessage() {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !claudeService.isResponding else { return }
+        guard !text.isEmpty, !aiService.isResponding else { return }
 
         let conversation = ensureConversation()
         let displayText = attachedFileURL != nil
@@ -478,7 +471,7 @@ struct ChatView: View {
         }
 
         // Pass file to service before clearing
-        claudeService.pendingFileURL = attachedFileURL
+        aiService.pendingFileURL = attachedFileURL
 
         // Auto-save to Vault (skip if image came from photo picker — user already decided)
         if let fileURL = attachedFileURL, !attachedFromPhotoPicker {
@@ -490,15 +483,15 @@ struct ChatView: View {
         attachedFromPhotoPicker = false
         errorMessage = nil
 
-        claudeService.isResponding = true
+        aiService.isResponding = true
         Task {
-            defer { claudeService.isResponding = false }
-            guard claudeService.hasAPIKey else {
-                errorMessage = "Add your Claude API key in Settings to enable AI chat."
+            defer { aiService.isResponding = false }
+            guard aiService.hasAPIKey else {
+                errorMessage = "Add your AI provider credential in Settings to enable AI chat."
                 return
             }
             do {
-                let response = try await claudeService.sendMessage(
+                let response = try await aiService.sendMessage(
                     conversationHistory: conversation.messages,
                     context: modelContext
                 )

@@ -112,7 +112,6 @@ final class HealthKitService {
         // Build lookup once instead of querying per-item
         buildExistingLookup(context: context, since: startDate)
 
-        logger.notice("[HealthKit] Starting sync, \(days) days back from \(startDate.formatted())")
 
         do {
             syncProgress?.phase = "Steps"
@@ -149,9 +148,8 @@ final class HealthKitService {
 
             lastSyncDate = Date()
             UserDefaults.standard.set(lastSyncDate, forKey: "healthkit-last-sync")
-            logger.notice("[HealthKit] Sync complete. Total imported: \(self.syncProgress?.imported ?? 0)")
         } catch {
-            logger.error("[HealthKit] Sync failed: \(error.localizedDescription)")
+            logger.error("Operation failed")
             self.error = "Sync failed: \(error.localizedDescription)"
         }
 
@@ -172,7 +170,6 @@ final class HealthKitService {
         multiplier: Double = 1
     ) async throws {
         guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else {
-            logger.warning("[HealthKit] \(metricType.displayName): type not available")
             return
         }
 
@@ -198,7 +195,6 @@ final class HealthKitService {
                 inserted += 1
             }
         }
-        logger.notice("[HealthKit] \(metricType.displayName): \(samples.count) samples → \(grouped.count) days → \(inserted) new")
     }
 
     /// Dedicated weight sync — fetches all samples over a long window, takes the latest per day,
@@ -251,7 +247,6 @@ final class HealthKitService {
                 }
             }
         }
-        logger.notice("[HealthKit] Weight: \(samples.count) samples → \(grouped.count) days → \(inserted) new, \(updated) updated")
     }
 
     /// Sync cumulative metrics (steps, calories, exercise minutes) — sums per day
@@ -263,7 +258,6 @@ final class HealthKitService {
         since startDate: Date
     ) async throws {
         guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else {
-            logger.warning("[HealthKit] \(metricType.displayName): type not available")
             return
         }
 
@@ -290,7 +284,6 @@ final class HealthKitService {
                 }
             }
         }
-        logger.notice("[HealthKit] \(metricType.displayName): \(samples.count) samples → \(grouped.count) days → \(inserted) new")
     }
 
     private func syncBloodPressure(context: ModelContext, since startDate: Date) async throws {
