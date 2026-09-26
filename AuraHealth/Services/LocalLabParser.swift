@@ -181,7 +181,16 @@ enum LocalLabParser {
     private static func extractValue(from lines: [String], startingAt index: Int, marker: MarkerPattern, lab: String, testDate: String) -> ExtractedBiomarker? {
         // Look at the current line and next 2 lines for a numeric value
         for offset in 0...min(2, lines.count - index - 1) {
-            let line = lines[index + offset]
+            var line = lines[index + offset]
+            if offset == 0 {
+                // Digits in names such as B12, HbA1c and Free T4 are not results.
+                for name in marker.names.sorted(by: { $0.count > $1.count }) {
+                    if let range = line.range(of: name, options: .caseInsensitive) {
+                        line = String(line[range.upperBound...])
+                        break
+                    }
+                }
+            }
 
             // Extract numbers from the line
             let numbers = extractNumbers(from: line)

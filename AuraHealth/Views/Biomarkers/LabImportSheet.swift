@@ -299,7 +299,7 @@ struct LabImportSheet: View {
                     let apiMarkers = try await aiService.extractBiomarkers(from: tempURL)
                     extractedBiomarkers = apiMarkers
                     selectedMarkers = Set(apiMarkers.map(\.id))
-                    extractionMethod = AIProvider.selected.displayName
+                    extractionMethod = aiService.extractionMethod
                     isExtracting = false
                     return
                 }
@@ -343,7 +343,7 @@ struct LabImportSheet: View {
                         let apiMarkers = try await aiService.extractBiomarkers(from: url)
                         extractedBiomarkers = apiMarkers
                         selectedMarkers = Set(apiMarkers.map(\.id))
-                        extractionMethod = AIProvider.selected.displayName
+                        extractionMethod = aiService.extractionMethod
                         isExtracting = false
                         return
                     } catch {

@@ -32,8 +32,7 @@ final class DailyProtocolService {
             if existing.first?.contextHash == currentHash {
                 return // Data hasn't changed, skip
             }
-            // Data changed — clear old protocol and regenerate
-            clearTodayProtocol(context: context)
+            // Keep the existing protocol until a replacement is available.
         }
 
         await generate(context: context)
@@ -41,7 +40,6 @@ final class DailyProtocolService {
 
     /// Force regenerate today's protocol (user-triggered refresh).
     func regenerate(context: ModelContext) async {
-        clearTodayProtocol(context: context)
         await generate(context: context)
     }
 
@@ -58,6 +56,7 @@ final class DailyProtocolService {
             let healthContext = buildHealthContext(context: context)
             let habits = try await callAI(healthContext: healthContext)
 
+            clearTodayProtocol(context: context)
             let today = Calendar.current.startOfDay(for: Date())
 
             // Insert smart habits

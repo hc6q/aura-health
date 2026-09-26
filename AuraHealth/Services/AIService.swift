@@ -6,6 +6,7 @@ import SwiftData
 @MainActor
 final class AIService {
     var isResponding = false
+    private(set) var extractionMethod = "local parsing"
 
     var hasAPIKey: Bool { AIConfiguration.isConfigured }
     private let transport = AITransport()
@@ -801,7 +802,7 @@ final class AIService {
     func extractBiomarkers(from fileURL: URL) async throws -> [ExtractedBiomarker] {
         let text = try await LocalLabParser.readText(fileURL: fileURL)
         let local = LocalLabParser.parse(text: text, fileName: fileURL.lastPathComponent)
-        if !local.isEmpty { return local }
+        if !local.isEmpty { extractionMethod = "local parsing"; return local }
         let configuration = try activeConfiguration ?? AIConfiguration.current()
         let response = try await transport.complete(configuration: configuration, messages: [
             AIMessage(role: "system", content: Self.extractionPrompt),
@@ -809,6 +810,7 @@ final class AIService {
         ])
         let markers = parseExtractedBiomarkers(response.content ?? "")
         guard !markers.isEmpty else { throw AIServiceError.invalidResponse }
+        extractionMethod = configuration.provider.displayName
         return markers
     }
 

@@ -147,6 +147,8 @@ final class AITransportTests: XCTestCase {
         let markers = LocalLabParser.parse(text: text, fileName: "test.txt")
         XCTAssertEqual(markers.first?.marker, "Glucose")
         XCTAssertEqual(markers.first?.value, 95)
+        XCTAssertEqual(LocalLabParser.parse(text: "Vitamin B12 420 pg/mL", fileName: "test.txt").first?.value, 420)
+        XCTAssertEqual(LocalLabParser.parse(text: "HbA1c 5.4 %", fileName: "test.txt").first?.value, 5.4)
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".pdf")
         defer { try? FileManager.default.removeItem(at: url) }
         // A text-backed PDF validates the production PDFKit extraction path.
