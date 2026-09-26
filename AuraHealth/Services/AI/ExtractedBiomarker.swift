@@ -22,4 +22,3 @@ struct ExtractedBiomarker: Codable, Identifiable {
         Self.dateFormatter.date(from: testDate) ?? Date()
     }
 }
-

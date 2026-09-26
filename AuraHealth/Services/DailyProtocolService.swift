@@ -238,7 +238,7 @@ final class DailyProtocolService {
         return "\(vitalCount)-\(bioCount)-\(medCount)-\(today.timeIntervalSince1970)"
     }
 
-    // MARK: - the selected AI provider API Call
+    // MARK: - AI Request
 
     struct GeneratedHabit: Codable {
         let name: String
@@ -314,14 +314,10 @@ final class DailyProtocolService {
 }
 
 enum ProtocolError: LocalizedError {
-    case invalidURL
-    case apiError(String)
     case parseError
 
     var errorDescription: String? {
         switch self {
-        case .invalidURL: "Invalid API URL"
-        case .apiError(let msg): "API error: \(msg)"
         case .parseError: "Could not parse protocol response"
         }
     }
