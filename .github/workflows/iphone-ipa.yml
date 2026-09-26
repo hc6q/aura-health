@@ -26,7 +26,7 @@ jobs:
           set -euo pipefail
           app="build/ios/Build/Products/Release-iphoneos/AuraHealth.app"
           test -d "$app"
-          xcrun lipo -verify_arch arm64 "$app/AuraHealth"
+          xcrun lipo "$app/AuraHealth" -verify_arch arm64
           platform=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleSupportedPlatforms:0' "$app/Info.plist")
           test "$platform" = "iPhoneOS"
           mkdir -p build/package/Payload
