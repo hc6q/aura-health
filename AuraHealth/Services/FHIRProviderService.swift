@@ -135,9 +135,8 @@ final class FHIRProviderService {
 
             self.providers = parsed
             cacheProviders(parsed)
-            logger.notice("[FHIR] Loaded \(parsed.count) providers from Epic directory")
         } catch {
-            logger.error("[FHIR] Failed to fetch directory: \(error.localizedDescription)")
+            logger.error("Operation failed")
             // Fall back to cached or curated list
             if providers.isEmpty {
                 providers = Self.curatedProviders
@@ -207,7 +206,6 @@ final class FHIRProviderService {
             return
         }
 
-        logger.notice("[FHIR] Starting OAuth for \(provider.name)")
 
         do {
             let callbackURL = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
@@ -239,14 +237,13 @@ final class FHIRProviderService {
             }
 
             try await exchangeToken(code: code, provider: provider, redirectURI: redirectURI, clientID: clientID)
-            logger.notice("[FHIR] Connected to \(provider.name)")
 
         } catch {
             if (error as? ASWebAuthenticationSessionError)?.code == .canceledLogin {
                 logger.notice("[FHIR] OAuth cancelled by user")
             } else {
                 self.error = "Connection failed: \(error.localizedDescription)"
-                logger.error("[FHIR] OAuth failed: \(error.localizedDescription)")
+                logger.error("Operation failed")
             }
         }
     }
@@ -313,7 +310,7 @@ final class FHIRProviderService {
             do {
                 try await syncProvider(connection: connection, into: context)
             } catch {
-                logger.error("[FHIR] Sync failed for \(connection.providerName): \(error.localizedDescription)")
+                logger.error("Operation failed")
             }
         }
 
@@ -327,7 +324,6 @@ final class FHIRProviderService {
         let token = connection.accessToken
 
         guard let patientID = connection.patientID else {
-            logger.warning("[FHIR] No patient ID for \(connection.providerName)")
             return
         }
 
@@ -529,7 +525,6 @@ final class FHIRProviderService {
         if let data = try? Data(contentsOf: cacheURL),
            let cached = try? JSONDecoder().decode([HealthProvider].self, from: data) {
             providers = cached
-            logger.notice("[FHIR] Loaded \(cached.count) cached providers")
         }
     }
 }

@@ -5,21 +5,14 @@ import os
 private let logger = Logger(subsystem: "com.santiagoalonso.aurahealth", category: "DailyProtocol")
 
 /// Generates a personalized daily health protocol by sending the user's
-/// real health context to Claude and getting back specific, actionable habits.
+/// real health context to the selected AI provider and getting back specific, actionable habits.
 @Observable
 @MainActor
 final class DailyProtocolService {
     var isGenerating = false
     var lastError: String?
 
-    private static let apiURL = "https://api.anthropic.com/v1/messages"
-    private static let model = "claude-sonnet-4-6"
-
-    private var apiKey: String {
-        KeychainService.getValue(for: "claude-api-key") ?? ""
-    }
-
-    var hasAPIKey: Bool { !apiKey.isEmpty }
+    var hasAPIKey: Bool { AIConfiguration.isConfigured }
 
     // MARK: - Generate Today's Protocol
 
@@ -54,7 +47,7 @@ final class DailyProtocolService {
 
     private func generate(context: ModelContext) async {
         guard hasAPIKey else {
-            lastError = "Claude API key required for smart habits"
+            lastError = "AI provider credential required for smart habits"
             return
         }
 
@@ -63,7 +56,7 @@ final class DailyProtocolService {
 
         do {
             let healthContext = buildHealthContext(context: context)
-            let habits = try await callClaude(healthContext: healthContext)
+            let habits = try await callAI(healthContext: healthContext)
 
             let today = Calendar.current.startOfDay(for: Date())
 
@@ -84,10 +77,9 @@ final class DailyProtocolService {
             context.insert(ProtocolMeta(forDate: today, contextHash: hash))
 
             try? context.save()
-            logger.notice("[DailyProtocol] Generated \(habits.count) smart habits")
         } catch {
             lastError = "Failed to generate: \(error.localizedDescription)"
-            logger.error("[DailyProtocol] Generation failed: \(error.localizedDescription)")
+            logger.error("[DailyProtocol] Generation failed")
         }
 
         isGenerating = false
@@ -133,7 +125,7 @@ final class DailyProtocolService {
 
     // MARK: - Build Health Context
 
-    /// Gather all relevant health data into a text summary for Claude.
+    /// Gather all relevant health data into a text summary for the selected AI provider.
     private func buildHealthContext(context: ModelContext) -> String {
         var sections: [String] = []
         let cal = Calendar.current
@@ -247,7 +239,7 @@ final class DailyProtocolService {
         return "\(vitalCount)-\(bioCount)-\(medCount)-\(today.timeIntervalSince1970)"
     }
 
-    // MARK: - Claude API Call
+    // MARK: - the selected AI provider API Call
 
     struct GeneratedHabit: Codable {
         let name: String
@@ -255,8 +247,8 @@ final class DailyProtocolService {
         let timing: String  // "morning", "afternoon", "evening", "night"
     }
 
-    private func callClaude(healthContext: String) async throws -> [GeneratedHabit] {
-        guard let url = URL(string: Self.apiURL) else { throw ProtocolError.invalidURL }
+    private func callAI(healthContext: String) async throws -> [GeneratedHabit] {
+        let configuration = try AIConfiguration.current()
 
         let systemPrompt = """
         You are a health protocol generator inside the Aura Health app. Your job is to create a personalized daily action list based on the user's real health data.
@@ -289,39 +281,13 @@ final class DailyProtocolService {
         Today is \(Date().formatted(date: .complete, time: .omitted)).
         """
 
-        let requestBody: [String: Any] = [
-            "model": Self.model,
-            "max_tokens": 2048,
-            "system": systemPrompt,
-            "messages": [
-                ["role": "user", "content": userMessage]
-            ]
-        ]
+        let response = try await AITransport().complete(configuration: configuration, messages: [
+            AIMessage(role: "system", content: systemPrompt),
+            AIMessage(role: "user", content: userMessage)
+        ])
+        guard let text = response.content else { throw ProtocolError.parseError }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = 30
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
-        request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.httpBody = try JSONSerialization.data(withJSONObject: requestBody)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            let body = String(data: data, encoding: .utf8) ?? "Unknown"
-            throw ProtocolError.apiError(body)
-        }
-
-        // Parse Claude's response
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let content = json["content"] as? [[String: Any]],
-              let textBlock = content.first(where: { $0["type"] as? String == "text" }),
-              let text = textBlock["text"] as? String else {
-            throw ProtocolError.parseError
-        }
-
-        // Extract JSON array from response (Claude might wrap it in markdown code blocks)
+        // Extract JSON array from response (the selected AI provider might wrap it in markdown code blocks)
         let cleanJSON = text
             .replacingOccurrences(of: "```json", with: "")
             .replacingOccurrences(of: "```", with: "")

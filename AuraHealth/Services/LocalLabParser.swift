@@ -1,51 +1,77 @@
 import Foundation
-#if os(macOS)
 import PDFKit
-#endif
+import Vision
+import CoreGraphics
 
 /// Extracts biomarkers from lab report files using local text parsing (no API needed)
 enum LocalLabParser {
 
-    // MARK: - Public
-
-    static func parse(fileURL: URL) throws -> [ExtractedBiomarker] {
-        let accessing = fileURL.startAccessingSecurityScopedResource()
-        defer { if accessing { fileURL.stopAccessingSecurityScopedResource() } }
-
-        let text: String
-        let isPDF = fileURL.pathExtension.lowercased() == "pdf"
-
-        if isPDF {
-            text = try extractTextFromPDF(fileURL)
-        } else {
-            text = try String(contentsOf: fileURL, encoding: .utf8)
-        }
-
-        guard !text.isEmpty else { return [] }
-
-        let lab = detectLab(from: text)
-        let testDate = detectDate(from: text, fileName: fileURL.lastPathComponent)
-
-        return extractBiomarkers(from: text, lab: lab, testDate: testDate)
+    static func parse(fileURL: URL) async throws -> [ExtractedBiomarker] {
+        let text = try await readText(fileURL: fileURL)
+        return parse(text: text, fileName: fileURL.lastPathComponent)
     }
 
-    // MARK: - PDF Text Extraction
+    static func parse(text: String, fileName: String) -> [ExtractedBiomarker] {
+        extractBiomarkers(from: text, lab: detectLab(from: text), testDate: detectDate(from: text, fileName: fileName))
+    }
 
-    private static func extractTextFromPDF(_ url: URL) throws -> String {
-        #if os(macOS)
-        guard let document = PDFDocument(url: url) else {
-            throw LabParserError.cannotReadPDF
-        }
-        var text = ""
-        for i in 0..<document.pageCount {
-            if let page = document.page(at: i), let pageText = page.string {
-                text += pageText + "\n"
+    /// PDFKit and Vision run on device, off the main actor, on both platforms.
+    static func readText(fileURL: URL) async throws -> String {
+        try await Task.detached(priority: .userInitiated) {
+            try extractText(fileURL: fileURL)
+        }.value
+    }
+
+    private static func extractText(fileURL: URL) throws -> String {
+        let accessing = fileURL.startAccessingSecurityScopedResource()
+        defer { if accessing { fileURL.stopAccessingSecurityScopedResource() } }
+        let size = try fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        guard size <= 20 * 1024 * 1024 else { throw AIServiceError.attachmentTooLarge }
+        let text: String
+        switch fileURL.pathExtension.lowercased() {
+        case "pdf":
+            guard let document = PDFDocument(url: fileURL), !document.isLocked else { throw LabParserError.cannotReadPDF }
+            guard document.pageCount <= 30 else { throw AIServiceError.attachmentTooLarge }
+            var pages = [String]()
+            for index in 0..<document.pageCount {
+                guard let page = document.page(at: index) else { continue }
+                let embedded = page.string?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                if !embedded.isEmpty { pages.append(embedded); continue }
+                // Render scanned pages to a bounded bitmap before local OCR.
+                guard let ref = page.pageRef else { throw AIServiceError.unreadableAttachment }
+                let bounds = ref.getBoxRect(.mediaBox)
+                guard bounds.width > 0, bounds.height > 0 else { throw AIServiceError.unreadableAttachment }
+                let scale = min(2, 2400 / max(bounds.width, bounds.height))
+                let width = max(1, Int(bounds.width * scale))
+                let height = max(1, Int(bounds.height * scale))
+                guard let bitmap = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw AIServiceError.unreadableAttachment }
+                bitmap.setFillColor(CGColor(gray: 1, alpha: 1))
+                let target = CGRect(x: 0, y: 0, width: width, height: height)
+                bitmap.fill(target)
+                bitmap.concatenate(ref.getDrawingTransform(.mediaBox, rect: target, rotate: 0, preserveAspectRatio: true))
+                bitmap.drawPDFPage(ref)
+                guard let image = bitmap.makeImage() else { throw AIServiceError.unreadableAttachment }
+                pages.append(try recognize(VNImageRequestHandler(cgImage: image)))
             }
+            text = pages.joined(separator: "\n")
+        case "jpg", "jpeg", "png", "heic", "heif", "tiff", "gif", "webp":
+            text = try recognize(VNImageRequestHandler(url: fileURL))
+        case "txt", "csv", "tsv", "md":
+            text = try String(contentsOf: fileURL, encoding: .utf8)
+        default: throw AIServiceError.unreadableAttachment
         }
+        guard text.count <= 60_000 else { throw AIServiceError.attachmentTooLarge }
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw AIServiceError.unreadableAttachment }
         return text
-        #else
-        throw LabParserError.cannotReadPDF
-        #endif
+    }
+
+    private static func recognize(_ handler: VNImageRequestHandler) throws -> String {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        request.usesLanguageCorrection = false // Preserve lab abbreviations and numeric values.
+        request.automaticallyDetectsLanguage = true
+        try handler.perform([request])
+        return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }.joined(separator: "\n")
     }
 
     // MARK: - Lab Detection
