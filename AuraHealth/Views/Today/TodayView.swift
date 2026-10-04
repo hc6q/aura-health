@@ -34,6 +34,7 @@ enum VitalsRange: String, CaseIterable, Identifiable {
 // MARK: - Vitals View
 
 struct VitalsView: View {
+    @Environment(HealthKitService.self) private var healthKitService
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \Measurement.timestamp, order: .reverse)
@@ -84,6 +85,11 @@ struct VitalsView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
+        #if os(iOS)
+        .refreshable {
+            await healthKitService.syncData(into: modelContext)
+        }
+        #endif
         .navigationTitle("Vitals")
         .toolbar {
             ToolbarItem(placement: .automatic) {

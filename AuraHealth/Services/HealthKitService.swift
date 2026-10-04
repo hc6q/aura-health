@@ -83,37 +83,32 @@ final class HealthKitService {
 
     // MARK: - Sync
 
-    /// Pre-fetched lookup of existing measurements to avoid N+1 queries during import
-    private var existingMeasurements: Set<String> = []
-
-    private func buildExistingLookup(context: ModelContext, since startDate: Date) {
-        let descriptor = FetchDescriptor<Measurement>(
-            predicate: #Predicate { $0.timestamp >= startDate }
-        )
-        let all = (try? context.fetch(descriptor)) ?? []
-        existingMeasurements = Set(all.map { measurement in
-            let day = Calendar.current.startOfDay(for: measurement.timestamp)
-            return "\(measurement.metricType.rawValue)-\(measurement.source.rawValue)-\(day.timeIntervalSince1970)"
-        })
-    }
+    private var dailyStore: DailyHealthMeasurementStore?
 
     func syncData(into context: ModelContext, days: Int = 30) async {
+        guard !isSyncing else { return }
+        isSyncing = true
+        defer {
+            dailyStore = nil
+            syncProgress = nil
+            isSyncing = false
+        }
+
         if !isAuthorized {
             await requestAuthorization()
             guard isAuthorized else { return }
         }
 
-        isSyncing = true
         error = nil
         syncProgress = SyncProgress()
 
-        let startDate = Calendar.current.date(byAdding: .day, value: -days, to: Date())!
-
-        // Build lookup once instead of querying per-item
-        buildExistingLookup(context: context, since: startDate)
-
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let startDate = calendar.date(byAdding: .day, value: -days, to: today)!
+        let weightStart = calendar.date(byAdding: .day, value: -365, to: today)!
 
         do {
+            dailyStore = try DailyHealthMeasurementStore(context: context, since: min(startDate, weightStart))
             syncProgress?.phase = "Steps"
             try await syncDailySum(.stepCount, metricType: .steps, unit: .count(), context: context, since: startDate)
 
@@ -122,8 +117,7 @@ final class HealthKitService {
 
             syncProgress?.phase = "Weight"
             // Weight is sparse — sync a full year and allow updates to existing values
-            let weightStart = Calendar.current.date(byAdding: .day, value: -365, to: Date())!
-            try await syncWeight(context: context, since: weightStart)
+            try await syncQuantity(.bodyMass, metricType: .weight, unit: .gramUnit(with: .kilo), context: context, since: weightStart)
 
             syncProgress?.phase = "Blood Oxygen"
             try await syncQuantity(.oxygenSaturation, metricType: .spo2, unit: .percent(), context: context, since: startDate, multiplier: 100)
@@ -146,6 +140,7 @@ final class HealthKitService {
             syncProgress?.phase = "Sleep"
             try await syncSleep(context: context, since: startDate)
 
+            try context.save()
             lastSyncDate = Date()
             UserDefaults.standard.set(lastSyncDate, forKey: "healthkit-last-sync")
         } catch {
@@ -153,9 +148,6 @@ final class HealthKitService {
             self.error = "Sync failed: \(error.localizedDescription)"
         }
 
-        existingMeasurements.removeAll()
-        syncProgress = nil
-        isSyncing = false
     }
 
     // MARK: - Query Helpers
@@ -177,7 +169,7 @@ final class HealthKitService {
         let descriptor = HKSampleQueryDescriptor(
             predicates: [.quantitySample(type: type, predicate: predicate)],
             sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)],
-            limit: 1000
+            limit: nil
         )
 
         let samples = try await descriptor.result(for: healthStore)
@@ -186,65 +178,11 @@ final class HealthKitService {
         let cal = Calendar.current
         let grouped = Dictionary(grouping: samples) { cal.startOfDay(for: $0.startDate) }
 
-        var inserted = 0
-        for (day, daySamples) in grouped {
+        for daySamples in grouped.values {
             guard let latest = daySamples.first else { continue }
             let value = latest.quantity.doubleValue(for: unit) * multiplier
-            if insertIfNew(context: context, timestamp: day, type: metricType, value: value) {
+            if upsertDaily(context: context, timestamp: latest.startDate, type: metricType, value: value) {
                 syncProgress?.imported += 1
-                inserted += 1
-            }
-        }
-    }
-
-    /// Dedicated weight sync — fetches all samples over a long window, takes the latest per day,
-    /// and upserts (updates stale values) so the chart reflects actual changes over time.
-    private func syncWeight(context: ModelContext, since startDate: Date) async throws {
-        guard let type = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return }
-        let unit = HKUnit.gramUnit(with: .kilo)
-
-        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: Date())
-        let descriptor = HKSampleQueryDescriptor(
-            predicates: [.quantitySample(type: type, predicate: predicate)],
-            sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)],
-            limit: 5000
-        )
-
-        let samples = try await descriptor.result(for: healthStore)
-
-        // Group by day, take the latest sample per day
-        let cal = Calendar.current
-        let grouped = Dictionary(grouping: samples) { cal.startOfDay(for: $0.startDate) }
-
-        // Fetch existing weight measurements for upsert
-        let weightType = MetricType.weight
-        let healthSource = MeasurementSource.appleHealth
-        let existingDescriptor = FetchDescriptor<Measurement>(
-            predicate: #Predicate { $0.metricType == weightType && $0.source == healthSource && $0.timestamp >= startDate }
-        )
-        let existingWeights = (try? context.fetch(existingDescriptor)) ?? []
-        let existingByDay = Dictionary(grouping: existingWeights) { cal.startOfDay(for: $0.timestamp) }
-
-        var inserted = 0
-        var updated = 0
-        for (day, daySamples) in grouped {
-            guard let latest = daySamples.first else { continue }
-            let value = latest.quantity.doubleValue(for: unit)
-
-            if let existing = existingByDay[day]?.first {
-                // Update if value changed (more than 0.05 kg difference)
-                if abs(existing.value - value) > 0.05 {
-                    existing.value = value
-                    updated += 1
-                }
-            } else {
-                let key = "\(MetricType.weight.rawValue)-\(MeasurementSource.appleHealth.rawValue)-\(day.timeIntervalSince1970)"
-                if !existingMeasurements.contains(key) {
-                    existingMeasurements.insert(key)
-                    context.insert(Measurement(timestamp: day, metricType: .weight, value: value, source: .appleHealth))
-                    syncProgress?.imported += 1
-                    inserted += 1
-                }
             }
         }
     }
@@ -265,7 +203,7 @@ final class HealthKitService {
         let descriptor = HKSampleQueryDescriptor(
             predicates: [.quantitySample(type: type, predicate: predicate)],
             sortDescriptors: [SortDescriptor(\.startDate, order: .forward)],
-            limit: 5000
+            limit: nil
         )
 
         let samples = try await descriptor.result(for: healthStore)
@@ -274,13 +212,11 @@ final class HealthKitService {
         let cal = Calendar.current
         let grouped = Dictionary(grouping: samples) { cal.startOfDay(for: $0.startDate) }
 
-        var inserted = 0
         for (day, daySamples) in grouped {
             let total = daySamples.reduce(0.0) { $0 + $1.quantity.doubleValue(for: unit) }
             if total > 0 {
-                if insertIfNew(context: context, timestamp: day, type: metricType, value: total) {
+                if upsertDaily(context: context, timestamp: day, type: metricType, value: total) {
                     syncProgress?.imported += 1
-                    inserted += 1
                 }
             }
         }
@@ -296,13 +232,13 @@ final class HealthKitService {
         let sysDescriptor = HKSampleQueryDescriptor(
             predicates: [.quantitySample(type: systolicType, predicate: predicate)],
             sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)],
-            limit: 500
+            limit: nil
         )
 
         let diasDescriptor = HKSampleQueryDescriptor(
             predicates: [.quantitySample(type: diastolicType, predicate: predicate)],
             sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)],
-            limit: 500
+            limit: nil
         )
 
         let systolicSamples = try await sysDescriptor.result(for: healthStore)
@@ -311,22 +247,15 @@ final class HealthKitService {
         // Match by timestamp
         let diastolicByDate = Dictionary(grouping: diastolicSamples) { $0.startDate }
 
+        // Samples are newest first. Apply only the latest reading for each day.
+        var processedDays: Set<Date> = []
         for sys in systolicSamples {
+            let day = Calendar.current.startOfDay(for: sys.startDate)
+            guard processedDays.insert(day).inserted else { continue }
             let sysValue = sys.quantity.doubleValue(for: mmHg)
             let diaValue = diastolicByDate[sys.startDate]?.first?.quantity.doubleValue(for: mmHg)
-
-            let day = Calendar.current.startOfDay(for: sys.startDate)
-            let key = "\(MetricType.bloodPressure.rawValue)-\(MeasurementSource.appleHealth.rawValue)-\(day.timeIntervalSince1970)"
-
-            if !existingMeasurements.contains(key) {
-                existingMeasurements.insert(key)
-                context.insert(Measurement(
-                    timestamp: sys.startDate,
-                    metricType: .bloodPressure,
-                    value: sysValue,
-                    value2: diaValue,
-                    source: .appleHealth
-                ))
+            if dailyStore?.upsert(context: context, timestamp: sys.startDate,
+                                  type: .bloodPressure, value: sysValue, value2: diaValue) == true {
                 syncProgress?.imported += 1
             }
         }
@@ -339,7 +268,7 @@ final class HealthKitService {
         let descriptor = HKSampleQueryDescriptor(
             predicates: [.categorySample(type: sleepType, predicate: predicate)],
             sortDescriptors: [SortDescriptor(\.startDate, order: .reverse)],
-            limit: 500
+            limit: nil
         )
 
         let samples = try await descriptor.result(for: healthStore)
@@ -359,7 +288,7 @@ final class HealthKitService {
             }
 
             if totalSleep > 0 {
-                if insertIfNew(context: context, timestamp: night, type: .sleepDuration, value: totalSleep) {
+                if upsertDaily(context: context, timestamp: night, type: .sleepDuration, value: totalSleep) {
                     syncProgress?.imported += 1
                 }
             }
@@ -367,16 +296,7 @@ final class HealthKitService {
     }
 
     @discardableResult
-    private func insertIfNew(context: ModelContext, timestamp: Date, type: MetricType, value: Double) -> Bool {
-        let day = Calendar.current.startOfDay(for: timestamp)
-        let key = "\(type.rawValue)-\(MeasurementSource.appleHealth.rawValue)-\(day.timeIntervalSince1970)"
-
-        if existingMeasurements.contains(key) {
-            return false
-        }
-
-        existingMeasurements.insert(key)
-        context.insert(Measurement(timestamp: timestamp, metricType: type, value: value, source: .appleHealth))
-        return true
+    private func upsertDaily(context: ModelContext, timestamp: Date, type: MetricType, value: Double) -> Bool {
+        dailyStore?.upsert(context: context, timestamp: timestamp, type: type, value: value) ?? false
     }
 }
