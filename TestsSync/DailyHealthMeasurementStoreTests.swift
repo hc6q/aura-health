@@ -5,6 +5,7 @@ import SwiftData
 
 @MainActor
 final class DailyHealthMeasurementStoreTests: XCTestCase {
+    private typealias Measurement = AuraSync.Measurement
     private func makeContainer() throws -> ModelContainer {
         try ModelContainer(for: Measurement.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
     }
