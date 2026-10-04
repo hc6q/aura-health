@@ -8,6 +8,8 @@ let package = Package(
     products: [.library(name: "AuraAI", targets: ["AuraAI"])],
     targets: [
         .target(name: "AuraAI", path: "AuraHealth/Services", sources: ["AI", "KeychainService.swift", "LocalLabParser.swift"]),
-        .testTarget(name: "AuraAITests", dependencies: ["AuraAI"], path: "Tests")
+        .testTarget(name: "AuraAITests", dependencies: ["AuraAI"], path: "Tests"),
+        .target(name: "AuraSync", path: "AuraHealth", sources: ["Models/Measurement.swift", "Enums/Enums.swift"]),
+        .testTarget(name: "AuraSyncTests", dependencies: ["AuraSync"], path: "TestsSync")
     ]
 )

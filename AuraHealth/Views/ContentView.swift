@@ -150,15 +150,12 @@ struct ContentView: View {
         #endif
     }
 
-    /// Auto-sync connected services (debounced — skip if synced within last 15 minutes)
+    /// Refresh HealthKit on activation; file imports retain their 15-minute debounce.
     private func autoSync() async {
         let fifteenMinutes: TimeInterval = 15 * 60
 
         if healthKitService.isAuthorized && !healthKitService.isSyncing {
-            let shouldSync = healthKitService.lastSyncDate.map { Date().timeIntervalSince($0) > fifteenMinutes } ?? true
-            if shouldSync {
-                await healthKitService.syncData(into: modelContext)
-            }
+            await healthKitService.syncData(into: modelContext)
         }
 
         #if os(macOS)
