@@ -1,0 +1,50 @@
+name: Publish HealthKit sync fix
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/release-healthkit-fix.yml']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: release-healthkit-v1.0.1
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RELEASE_COMMIT: 253bb9e06d0811b0cf8fa82eae3cd6cd41a7eab3
+    steps:
+      - name: Verify validated build and download its IPA
+        run: |
+          set -euo pipefail
+          gh api repos/$GH_REPO/actions/runs/37235182953 > run.json
+          jq -e --arg sha "$RELEASE_COMMIT" '.head_sha == $sha and .conclusion == "success"' run.json
+          gh run download 37235182953 --name AuraHealth-unsigned-ipa --dir package
+          cd package
+          sha256sum --check SHA256SUMS.txt
+          test -s AuraHealth-unsigned.ipa
+      - name: Publish release and assets
+        run: |
+          set -euo pipefail
+          cat > notes.md <<'NOTES'
+          Corrige a sincronização com o Apple Health que mantinha apenas o primeiro valor importado do dia.
+
+          - Atualiza as medições existentes sem duplicar registros nem alterar entradas manuais.
+          - Sincroniza ao retornar ao app e permite puxar a tela Vitals para atualizar.
+          - Remove limites de consulta que podiam excluir leituras recentes.
+
+          Testes e compilações para iOS e macOS passaram. IPA para iPhone compilado a partir do commit 253bb9e06d0811b0cf8fa82eae3cd6cd41a7eab3.
+
+          **Instalação:** baixe AuraHealth-unsigned.ipa e assine pelo seu método de instalação habitual. O IPA não é assinado; HealthKit e CloudKit dependem das permissões do perfil de assinatura. A versão interna do app permanece 1.0.0.
+          NOTES
+          if gh release view v1.0.1 >/dev/null 2>&1; then
+            echo "Release v1.0.1 already exists; leaving it unchanged."
+            exit 0
+          fi
+          gh release create v1.0.1 --target "$RELEASE_COMMIT" --title "AuraHealth v1.0.1 — correção de sincronização" --notes-file notes.md --draft
+          gh release upload v1.0.1 package/AuraHealth-unsigned.ipa package/SHA256SUMS.txt package/INSTALL.txt
+          gh release edit v1.0.1 --draft=false --latest
